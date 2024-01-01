@@ -1,0 +1,78 @@
+import os
+import mysql.connector
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+
+conn = mysql.connector.connect(
+    host=os.getenv('SQL_HOST'),
+    port=os.getenv('SQL_PORT'),
+    user=os.getenv('SQL_USER'),
+    password=os.getenv('SQL_PASSWORD'),
+    database=os.getenv('SQL_DATABASE')
+)
+cursor = conn.cursor()
+
+
+# telegram bot token
+TOKEN = os.getenv('TLGRM_TOKEN')
+
+
+# function /start
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text('Bem-vindo! Teste o bot enviando uma mensagem')
+
+
+# function to receive messages
+def receive_message(update: Update, context: CallbackContext) -> None:
+    # user_id = update.message.from_user.name
+    user_id = update.message.from_user.id
+    message_text = update.message.text
+    print(f'mensagem recebida: {message_text}')
+
+    # cursor.execute('INSERT INTO dados ...')
+    # conn.commit()
+
+    update.message.reply_text('Mensagem recebida e salva no banco')
+
+
+# function to retrieve data from DB
+def get_data(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+
+    # cursor.execute('SELECT * FROM develop2020.trd2022_event_type WHERE id=%s', (id))
+    cursor.execute('SELECT * FROM develop2020.trd2022_event_type')
+    column_names = [column[0] for column in cursor.description]
+    result = cursor.fetchall()
+
+    if result:
+        table = list_to_mdtable(result, column_names)
+
+        update.message.reply_text(table, parse_mode='Markdown')
+    else:
+        update.message.reply_text('Nenhuma mensagem encontrada')
+
+
+# format list to table in markdown
+def list_to_mdtable(list, column_names):
+    table = f"```\n{' | '.join(column_names)} |\n"
+    for line in list:
+        table += ' | '.join(map(str, line)) + ' |\n'
+    table += '```'
+
+    return table
+
+
+# config bot and handlers
+updater = Updater(token=TOKEN, use_context=True)
+dispatcher = updater.dispatcher
+
+dispatcher.add_handler(CommandHandler('start', start))
+dispatcher.add_handler(MessageHandler(
+    Filters.text & ~Filters.command, receive_message))
+dispatcher.add_handler(CommandHandler('get_data', get_data))
+
+# start bot
+updater.start_polling()
+updater.idle()
+
+conn.close()
