@@ -1,5 +1,6 @@
 import os
 import mysql.connector
+from mysql.connector import Error
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
@@ -37,19 +38,27 @@ def receive_message(update: Update, context: CallbackContext) -> None:
 
 # function to retrieve data from DB
 def get_data(update: Update, context: CallbackContext) -> None:
-    user_id = update.message.from_user.id
+    try:
+        user_id = update.message.from_user.id
+        proc_result = []
+        proc_description = []
+        # cursor.execute('SELECT * FROM develop2020.trd2022_event_type WHERE id=%s', (id))
+        cursor.callproc('STP_TRD2022_GET_EVENTS')
+        proc_data = cursor.stored_results()
+        for result in proc_data:
+            proc_result = result.fetchall()
+            proc_description = result.description
+            
+        column_names = [column[0] for column in proc_description]
 
-    # cursor.execute('SELECT * FROM develop2020.trd2022_event_type WHERE id=%s', (id))
-    cursor.execute('SELECT * FROM develop2020.trd2022_event_type')
-    column_names = [column[0] for column in cursor.description]
-    result = cursor.fetchall()
+        if proc_result:
+            table = list_to_mdtable(proc_result, column_names)
 
-    if result:
-        table = list_to_mdtable(result, column_names)
-
-        update.message.reply_text(table, parse_mode='Markdown')
-    else:
-        update.message.reply_text('Nenhuma mensagem encontrada')
+            update.message.reply_text(table, parse_mode='Markdown')
+        else:
+            update.message.reply_text('Nenhuma mensagem encontrada')
+    except Exception as e:
+        print(e)
 
 
 # format list to table in markdown
