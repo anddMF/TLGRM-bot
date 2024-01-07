@@ -59,6 +59,7 @@ def get_data(update: Update, context: CallbackContext) -> None:
             update.message.reply_text('Nenhuma mensagem encontrada')
     except Exception as e:
         print(e)
+        update.message.reply_text('Erro ao trazer dados: ', e)
 
 
 # format list to table in markdown
